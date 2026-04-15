@@ -1,0 +1,166 @@
+================================================================================
+ NHL PLAYOFF POOL — PROJECT STATUS
+ Last updated: 2026-04-15
+================================================================================
+
+OVERVIEW
+--------
+A free, automated NHL playoffs predictions pool hosted on GitHub Pages.
+Friends submit picks via a web form (no login required). Picks lock
+automatically when each series starts. Scores update hourly via the NHL
+public API. No ongoing cost — everything runs on free tiers.
+
+Live URL: https://tiagosilvamtl-design.github.io/NHL-pool-2026/
+
+
+--------------------------------------------------------------------------------
+SCORING RULES
+--------------------------------------------------------------------------------
+  +2 pts  Correct series winner
+  +1 pt   Correct number of games (4/5/6/7)
+          — only awarded if the winner pick is also correct
+
+
+--------------------------------------------------------------------------------
+ARCHITECTURE
+--------------------------------------------------------------------------------
+
+  [GitHub Pages]          Hosts the static frontend (HTML/CSS/JS)
+       ↓ GET requests
+  [Google Apps Script]    Backend API — reads/writes the Google Sheet
+       ↓ read/write
+  [Google Sheets]         Database — stores picks and series results
+       ↑ POST (hourly)
+  [GitHub Actions]        Fetches NHL API, pushes results to Apps Script
+
+  NHL API (free, no auth):
+    - Bracket:  https://api-web.nhle.com/v1/playoff-series/carousel/20252026/
+    - Schedule: https://api-web.nhle.com/v1/schedule/YYYY-MM-DD
+
+
+--------------------------------------------------------------------------------
+INFRASTRUCTURE SETUP (completed)
+--------------------------------------------------------------------------------
+
+  Google Sheet ID:    1KBhVCvtmN2LQAeTcbQhqCE5x1uZDIExgqeeAJIlq5ZA
+  Apps Script URL:    https://script.google.com/macros/s/AKfycbwsS25ehzWAZ5J5oWjNprU1atsy50FNZIwSjSLZTfPcPfWFFfyIGScgqOk53Mwa4G6q6w/exec
+  GitHub Repo:        https://github.com/tiagosilvamtl-design/NHL-pool-2026
+  GitHub Pages:       https://tiagosilvamtl-design.github.io/NHL-pool-2026/
+
+  GitHub Secrets configured:
+    - APPS_SCRIPT_SECRET   (shared secret between Actions and Apps Script)
+
+  GitHub Variables configured:
+    - APPS_SCRIPT_URL      (Apps Script /exec URL)
+
+  Google Sheets tabs:
+    - submissions   timestamp | name | email | series_id | pick_team | pick_games
+    - series        series_id | round | team1_abbr | team2_abbr | team1_name |
+                    team2_name | winner_abbr | actual_games | first_game_utc |
+                    locked | status | team1_logo | team2_logo
+
+
+--------------------------------------------------------------------------------
+FILE STRUCTURE
+--------------------------------------------------------------------------------
+
+  index.html                      Leaderboard page
+  picks.html                      Pick submission form
+  bracket.html                    Playoff bracket view
+  css/style.css                   All styling
+  js/config.js                    Apps Script URL constant
+  js/api.js                       Fetch wrappers for backend + NHL API
+  js/leaderboard.js               Leaderboard rendering + auto-refresh
+  js/picks.js                     Picks form logic, lock enforcement, pre-fill
+  js/shame.js                     "Shame" Easter egg animation
+  js/bracket.js                   Bracket visualization
+  gas/Code.gs                     Google Apps Script backend (copy into editor)
+  gas/Setup.gs                    One-time sheet setup utility
+  .github/scripts/update-scores.js   Node 20 script — fetches NHL API
+  .github/workflows/update-scores.yml  Hourly GitHub Actions workflow
+  README.md                       Setup instructions
+  project_status.txt              This file
+
+
+--------------------------------------------------------------------------------
+KEY BEHAVIOURS
+--------------------------------------------------------------------------------
+
+  Submission
+    - Anyone with the link can submit picks — no login required
+    - Identified by email address (unique per person)
+    - Picks can be updated until the series locks
+    - Each series locks independently when its first game starts
+    - On re-submission with same email, existing picks are overwritten
+
+  Locking
+    - Lock time is determined from the NHL schedule API (first game UTC time)
+    - Lock status is computed by GitHub Actions hourly and stored in the Sheet
+    - Locked series show a "LOCKED" badge; inputs are disabled on the form
+
+  Scoring (computed live by Apps Script on every leaderboard load)
+    - Scans all completed series against all submissions
+    - +2 for correct winner, +1 bonus for correct games (winner must be correct)
+    - Leaderboard sorted by total, ties share rank
+
+  Automation
+    - GitHub Actions runs every hour
+    - Fetches NHL carousel API for series results and team logos
+    - Fetches NHL schedule API to determine first game times
+    - POSTs results to Apps Script with secret token authentication
+    - Apps Script upserts the series sheet
+
+  Easter egg
+    - If a participant picks against the Montreal Canadiens, a full-screen
+      "SHAME" animation fires after submission (falling text, bell ringer)
+
+
+--------------------------------------------------------------------------------
+CHANGE LOG
+--------------------------------------------------------------------------------
+
+  2026-04-15  Initial build
+              - Full project scaffolded and deployed
+              - GitHub Pages live, Apps Script deployed, GitHub Actions running
+              - Google Sheet populated with 8 first-round series (bracket not
+                fully confirmed yet — logos and game times pending NHL schedule)
+
+  2026-04-15  Visual redesign + logo bug fix
+              - Added team1_logo / team2_logo columns to series sheet
+                (were fetched by Actions but never stored — now fixed)
+              - Redesigned picks form: large logo-centric team selection cards
+              - New deep navy color system with smooth transitions
+              - Leaderboard: gold/silver/bronze medal accents for top 3
+              - Bracket: divider lines, start time display, winner highlight
+              - Skeleton shimmer loading states
+              - Logo fallback badge (team abbreviation) when logo unavailable
+              - Node.js version bump to 24 in workflow (deprecation warning fix)
+                [PENDING — see known issues]
+
+
+--------------------------------------------------------------------------------
+KNOWN ISSUES / PENDING
+--------------------------------------------------------------------------------
+
+  - Team logos and game start times are not yet populated in the series sheet.
+    The NHL has not published the full playoff schedule yet. Will auto-populate
+    once the NHL API returns schedule data (expected ~1-2 days before games).
+
+  - Node.js 20 deprecation warning in GitHub Actions. Actions are using
+    actions/checkout@v4 and actions/setup-node@v4 which run on Node 20.
+    GitHub will force Node 24 by default on June 2, 2026. Update workflow
+    to node-version: '24' before that date.
+
+
+--------------------------------------------------------------------------------
+REDEPLOYMENT NOTES (for future changes to Code.gs)
+--------------------------------------------------------------------------------
+
+  Every time gas/Code.gs is modified:
+    1. Open Google Sheet → Extensions → Apps Script
+    2. Replace Code.gs content with the updated version
+    3. Save (Cmd+S)
+    4. Deploy → Manage deployments → pencil icon → New version → Deploy
+    The /exec URL stays the same — no need to update config.js or GitHub vars.
+
+================================================================================
