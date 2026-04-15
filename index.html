@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NHL Playoff Pool — Leaderboard</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <header class="site-header">
+    <div class="header-inner">
+      <span class="site-logo">🏒</span>
+      <h1 class="site-title">NHL Playoff Pool</h1>
+      <nav class="site-nav">
+        <a href="index.html" class="active">Leaderboard</a>
+        <a href="picks.html">Submit Picks</a>
+        <a href="bracket.html">Bracket</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="page-main">
+    <section class="page-section">
+      <div class="section-header">
+        <h2>Standings</h2>
+        <span id="last-updated" class="last-updated"></span>
+      </div>
+      <div id="leaderboard-container">
+        <p class="loading">Loading standings...</p>
+      </div>
+    </section>
+
+    <section class="page-section scoring-rules">
+      <h2>Scoring</h2>
+      <ul>
+        <li><strong>2 pts</strong> — Correct series winner</li>
+        <li><strong>+1 pt</strong> — Correct number of games <em>(only if you also picked the right winner)</em></li>
+      </ul>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <p>Picks lock automatically when each series begins. Good luck!</p>
+  </footer>
+
+  <script src="js/config.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/leaderboard.js"></script>
+</body>
+</html>

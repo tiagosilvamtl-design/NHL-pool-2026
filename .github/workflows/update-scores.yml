@@ -1,0 +1,31 @@
+name: Update NHL Scores
+
+on:
+  schedule:
+    # Run every hour during playoff season (April–June)
+    - cron: '0 * * * *'
+  push:
+    branches: [main]
+    paths:
+      - '.github/scripts/update-scores.js'
+  workflow_dispatch: # Allow manual trigger for testing
+
+jobs:
+  update:
+    name: Fetch NHL results and update scores
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Run score updater
+        run: node .github/scripts/update-scores.js
+        env:
+          APPS_SCRIPT_URL: ${{ vars.APPS_SCRIPT_URL }}
+          APPS_SCRIPT_SECRET: ${{ secrets.APPS_SCRIPT_SECRET }}
