@@ -112,6 +112,10 @@ function buildSeriesCard(s) {
       ? `<span class="lock-time">Locks ${lockTime}</span>`
       : '<span class="lock-time">Lock time TBD</span>';
 
+  const teamLogo = (logo, abbr) => logo
+    ? `<img src="${logo}" alt="${abbr}" class="team-logo" />`
+    : `<span class="team-logo-fallback">${abbr}</span>`;
+
   card.innerHTML = `
     <div class="series-header">
       <span class="series-label">${s.series_id}</span>
@@ -120,28 +124,28 @@ function buildSeriesCard(s) {
     <div class="matchup">
       <label class="team-option ${locked ? 'disabled' : ''}">
         <input type="radio" name="winner-${s.series_id}" value="${s.team1_abbr}" ${locked ? 'disabled' : ''} required />
-        <span class="team-logo-wrap">
-          ${s.team1_logo ? `<img src="${s.team1_logo}" alt="${s.team1_abbr}" class="team-logo" />` : ''}
-        </span>
-        <span class="team-name">${s.team1_name} <span class="abbr">(${s.team1_abbr})</span></span>
+        <div class="team-logo-wrap">${teamLogo(s.team1_logo, s.team1_abbr)}</div>
+        <span class="team-name">${s.team1_name}</span>
+        <span class="team-abbr-badge">${s.team1_abbr}</span>
       </label>
-      <span class="vs">vs</span>
+      <div class="vs-divider">VS</div>
       <label class="team-option ${locked ? 'disabled' : ''}">
         <input type="radio" name="winner-${s.series_id}" value="${s.team2_abbr}" ${locked ? 'disabled' : ''} required />
-        <span class="team-logo-wrap">
-          ${s.team2_logo ? `<img src="${s.team2_logo}" alt="${s.team2_abbr}" class="team-logo" />` : ''}
-        </span>
-        <span class="team-name">${s.team2_name} <span class="abbr">(${s.team2_abbr})</span></span>
+        <div class="team-logo-wrap">${teamLogo(s.team2_logo, s.team2_abbr)}</div>
+        <span class="team-name">${s.team2_name}</span>
+        <span class="team-abbr-badge">${s.team2_abbr}</span>
       </label>
     </div>
     <div class="games-pick">
-      <span class="games-label">Games:</span>
-      ${[4, 5, 6, 7].map(n => `
-        <label class="games-option ${locked ? 'disabled' : ''}">
-          <input type="radio" name="games-${s.series_id}" value="${n}" ${locked ? 'disabled' : ''} required />
-          <span>${n}</span>
-        </label>
-      `).join('')}
+      <span class="games-label">Games</span>
+      <div class="games-options">
+        ${[4, 5, 6, 7].map(n => `
+          <label class="games-option ${locked ? 'disabled' : ''}">
+            <input type="radio" name="games-${s.series_id}" value="${n}" ${locked ? 'disabled' : ''} required />
+            <span>${n}</span>
+          </label>
+        `).join('')}
+      </div>
     </div>
   `;
 

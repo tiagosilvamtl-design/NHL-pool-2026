@@ -14,6 +14,7 @@ function setupSheets() {
       headers: [
         'series_id', 'round', 'team1_abbr', 'team2_abbr', 'team1_name', 'team2_name',
         'winner_abbr', 'actual_games', 'first_game_utc', 'locked', 'status',
+        'team1_logo', 'team2_logo',
       ],
     },
   ];

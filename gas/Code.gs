@@ -10,6 +10,7 @@ const SUB_COLS = { timestamp: 0, name: 1, email: 2, series_id: 3, pick_team: 4, 
 const SER_COLS = {
   series_id: 0, round: 1, team1_abbr: 2, team2_abbr: 3, team1_name: 4, team2_name: 5,
   winner_abbr: 6, actual_games: 7, first_game_utc: 8, locked: 9, status: 10,
+  team1_logo: 11, team2_logo: 12,
 };
 
 // ─── ROUTER ───────────────────────────────────────────────────────────────────
@@ -75,6 +76,8 @@ function rowToSeries(row) {
     first_game_utc: row[SER_COLS.first_game_utc] || null,
     locked:         row[SER_COLS.locked] === true || row[SER_COLS.locked] === 'TRUE',
     status:         row[SER_COLS.status]          || 'active',
+    team1_logo:     row[SER_COLS.team1_logo]      || '',
+    team2_logo:     row[SER_COLS.team2_logo]      || '',
   };
 }
 
@@ -334,6 +337,7 @@ function updateResults(body) {
         team1_name || '', team2_name || '',
         winner_abbr || '', actual_games || '', first_game_utc || '',
         locked === true, status || 'active',
+        res.team1_logo || '', res.team2_logo || '',
       ];
 
       const existingIdx = rowIndexMap[series_id];

@@ -37,22 +37,32 @@ async function loadLeaderboard() {
 
     // Body
     const tbody = table.createTBody();
+    const medalEmoji = { 1: '🥇', 2: '🥈', 3: '🥉' };
+
     leaderboard.forEach(p => {
       const tr = tbody.insertRow();
-      tr.className = p.rank === 1 ? 'rank-first' : '';
+      tr.className = `rank-${p.rank}`;
 
-      const cells = [
-        p.rank === 1 ? '🥇' : p.rank,
-        p.name,
-        ...rounds.map(r => p.roundScores[r] ?? 0),
-        p.total,
-      ];
+      // Rank cell
+      const rankTd = tr.insertCell();
+      rankTd.className = 'rank-num';
+      rankTd.textContent = medalEmoji[p.rank] || p.rank;
 
-      cells.forEach((val, i) => {
+      // Name cell
+      const nameTd = tr.insertCell();
+      nameTd.className = 'name-cell';
+      nameTd.textContent = p.name;
+
+      // Round score cells
+      rounds.forEach(r => {
         const td = tr.insertCell();
-        td.textContent = val;
-        if (i === cells.length - 1) td.className = 'total-col';
+        td.textContent = p.roundScores[r] ?? 0;
       });
+
+      // Total cell
+      const totalTd = tr.insertCell();
+      totalTd.className = 'total-col';
+      totalTd.textContent = p.total;
     });
 
     container.innerHTML = '';

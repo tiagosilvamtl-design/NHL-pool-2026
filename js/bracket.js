@@ -57,22 +57,33 @@ function buildBracketSeries(s) {
   const team1Won = s.winner_abbr === s.team1_abbr;
   const team2Won = s.winner_abbr === s.team2_abbr;
 
+  const seriesStarted = s.locked || s.status === 'complete';
+
   const statusLabel = s.status === 'complete'
     ? `${s.winner_abbr} wins in ${s.actual_games}`
-    : s.locked
+    : seriesStarted
       ? 'In progress'
-      : 'Upcoming';
+      : s.first_game_utc
+        ? `Starts ${formatLocalTime(s.first_game_utc)}`
+        : 'Upcoming';
+
+  const statusClass = s.status === 'complete' ? 'complete-status' : '';
+
+  const teamLogo = (logo, abbr) => logo
+    ? `<img src="${logo}" alt="${abbr}" class="team-logo-sm" />`
+    : '';
 
   card.innerHTML = `
     <div class="bracket-team ${team1Won ? 'winner' : team2Won ? 'eliminated' : ''}">
-      ${s.team1_logo ? `<img src="${s.team1_logo}" alt="${s.team1_abbr}" class="team-logo-sm" />` : ''}
-      <span class="team-abbr">${s.team1_abbr}</span>
+      ${teamLogo(s.team1_logo, s.team1_abbr)}
+      <span>${s.team1_abbr}</span>
     </div>
+    <div class="bracket-divider"></div>
     <div class="bracket-team ${team2Won ? 'winner' : team1Won ? 'eliminated' : ''}">
-      ${s.team2_logo ? `<img src="${s.team2_logo}" alt="${s.team2_abbr}" class="team-logo-sm" />` : ''}
-      <span class="team-abbr">${s.team2_abbr}</span>
+      ${teamLogo(s.team2_logo, s.team2_abbr)}
+      <span>${s.team2_abbr}</span>
     </div>
-    <div class="bracket-status">${statusLabel}</div>
+    <div class="bracket-status ${statusClass}">${statusLabel}</div>
   `;
 
   return card;
