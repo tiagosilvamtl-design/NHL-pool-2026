@@ -4,7 +4,6 @@ let bracketData = null; // { series, currentRound }
 
 async function loadPicksForm() {
   const formContainer = document.getElementById('picks-form-container');
-  const statusBanner = document.getElementById('status-banner');
 
   try {
     formContainer.innerHTML = '<p class="loading">Loading current series...</p>';
@@ -17,7 +16,6 @@ async function loadPicksForm() {
       return;
     }
 
-    // Filter to current round only
     const currentSeries = series.filter(
       s => Number(s.round) === currentRound && s.status !== 'complete'
     );
@@ -44,7 +42,6 @@ function renderPicksForm(seriesList) {
   form.id = 'picks-form';
   form.noValidate = true;
 
-  // Participant info
   form.innerHTML = `
     <div class="participant-fields">
       <div class="field-group">
@@ -56,33 +53,46 @@ function renderPicksForm(seriesList) {
         <input type="email" id="input-email" placeholder="you@example.com" required autocomplete="email" />
       </div>
     </div>
+    <div id="pin-field-group" class="field-group pin-field" style="display:none;">
+      <label for="input-pin" id="pin-label">Enter your PIN</label>
+      <input type="password" id="input-pin" placeholder="4–6 digit PIN"
+             maxlength="6" inputmode="numeric" autocomplete="off" />
+    </div>
     <p class="picks-instruction">Make your picks for each series below. Picks lock when the first game of each series starts.</p>
   `;
 
-  // Email blur → pre-fill picks
+  // Email blur → pre-fill picks + show PIN field
   const emailInput = form.querySelector('#input-email');
   emailInput.addEventListener('blur', async () => {
     const email = emailInput.value.trim();
     if (!email || !email.includes('@')) return;
+
+    // Pre-fill existing picks (non-fatal)
     try {
       const { picks } = await getMyPicks(email);
       if (picks && picks.length > 0) {
         prefillPicks(picks);
         showBanner('Your previous picks have been loaded. You can update them until each series locks.', 'info');
       }
-    } catch (_) {
-      // Non-fatal — just don't pre-fill
-    }
+    } catch (_) {}
+
+    // Show PIN field with correct label
+    try {
+      const { exists } = await checkEmail(email);
+      const pinGroup = document.getElementById('pin-field-group');
+      const pinLabel = document.getElementById('pin-label');
+      if (pinGroup) {
+        pinLabel.textContent = exists ? 'Enter your PIN' : 'Choose a PIN (4–6 digits)';
+        pinGroup.style.display = '';
+        document.getElementById('input-pin')?.focus();
+      }
+    } catch (_) {}
   });
 
   // Series cards
   const seriesGrid = document.createElement('div');
   seriesGrid.className = 'series-grid';
-
-  seriesList.forEach(s => {
-    seriesGrid.appendChild(buildSeriesCard(s));
-  });
-
+  seriesList.forEach(s => seriesGrid.appendChild(buildSeriesCard(s)));
   form.appendChild(seriesGrid);
 
   // Submit button
@@ -174,6 +184,26 @@ async function handleSubmit(e) {
     return;
   }
 
+  // PIN validation
+  const pinGroup = document.getElementById('pin-field-group');
+  const pinVisible = pinGroup && pinGroup.style.display !== 'none';
+
+  if (!pinVisible) {
+    // PIN field hasn't appeared — user hasn't blurred the email field
+    showBanner('Please click outside the email field first to activate PIN verification.', 'error');
+    form.querySelector('#input-email')?.focus();
+    return;
+  }
+
+  const pinInput = form.querySelector('#input-pin');
+  const pin = pinInput ? pinInput.value.trim() : '';
+
+  if (!pin || !/^\d{4,6}$/.test(pin)) {
+    showBanner('Please enter your PIN (4–6 digits).', 'error');
+    pinInput?.focus();
+    return;
+  }
+
   if (!bracketData) return;
   const { series, currentRound } = bracketData;
   const currentSeries = series.filter(
@@ -220,19 +250,17 @@ async function handleSubmit(e) {
   submitBtn.textContent = 'Submitting...';
 
   try {
-    const { results } = await submitPicks(name, email, picks);
+    const { results } = await submitPicks(name, email, picks, pin);
 
-    const saved    = results.filter(r => r.status === 'saved').length;
-    const updated  = results.filter(r => r.status === 'updated').length;
-    const locked   = results.filter(r => r.status === 'locked').length;
+    const saved   = results.filter(r => r.status === 'saved').length;
+    const updated = results.filter(r => r.status === 'updated').length;
+    const locked  = results.filter(r => r.status === 'locked').length;
 
     let msg = '';
     if (saved + updated > 0) {
       msg += `${saved + updated} pick${saved + updated > 1 ? 's' : ''} ${updated > 0 && saved === 0 ? 'updated' : 'saved'}. `;
     }
-    if (locked > 0) {
-      msg += `${locked} series already started and could not be changed.`;
-    }
+    if (locked > 0) msg += `${locked} series already started and could not be changed.`;
 
     showBanner(msg.trim() || 'Picks submitted!', saved + updated > 0 ? 'success' : 'warning');
 
@@ -241,7 +269,12 @@ async function handleSubmit(e) {
       setTimeout(triggerShame, 600);
     }
   } catch (err) {
-    showBanner(`Submission failed: ${err.message}`, 'error');
+    if (err.message === 'incorrect_pin') {
+      showBanner('Incorrect PIN. Please try again.', 'error');
+      pinInput?.focus();
+    } else {
+      showBanner(`Submission failed: ${err.message}`, 'error');
+    }
     console.error(err);
   } finally {
     submitBtn.disabled = false;

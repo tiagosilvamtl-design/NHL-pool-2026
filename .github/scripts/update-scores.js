@@ -77,6 +77,20 @@ async function fetchBracket() {
         status = 'complete';
       }
 
+      // Determine conference — try API field first, then fall back to letter heuristic
+      let conference = s.conference || s.conferenceName || s.conferenceAbbrev || '';
+      if (!conference) {
+        const letterIdx = letter.toUpperCase().charCodeAt(0) - 'A'.charCodeAt(0);
+        if (roundNum === 1) {
+          conference = letterIdx <= 3 ? 'Eastern' : 'Western';
+        } else if (roundNum === 2) {
+          conference = letterIdx <= 1 ? 'Eastern' : 'Western';
+        } else if (roundNum === 3) {
+          conference = letter.toUpperCase() === 'A' ? 'Eastern' : 'Western';
+        }
+        // Round 4 (SCF) has no conference
+      }
+
       seriesMap[series_id] = {
         series_id,
         round: roundNum,
@@ -89,6 +103,7 @@ async function fetchBracket() {
         winner_abbr,
         actual_games,
         status,
+        conference,
         // first_game_utc and locked filled in next step
         first_game_utc: null,
         locked: false,

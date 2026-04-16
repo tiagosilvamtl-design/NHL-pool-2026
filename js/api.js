@@ -25,9 +25,13 @@ async function getSeriesLockStatus() {
   return apiGet('get_series_lock_status');
 }
 
+async function checkEmail(email) {
+  return apiGet('check_email', { email: email.trim().toLowerCase() });
+}
+
 // picks: [{series_id, pick_team, pick_games}]
-async function submitPicks(name, email, picks) {
-  const payload = { name, email: email.trim().toLowerCase(), picks };
+async function submitPicks(name, email, picks, pin) {
+  const payload = { name, email: email.trim().toLowerCase(), picks, pin };
   const data = encodeURIComponent(JSON.stringify(payload));
   const res = await fetch(`${APPS_SCRIPT_URL}?action=submit_picks&data=${data}&_t=${Date.now()}`);
   if (!res.ok) throw new Error(`Request failed: ${res.status}`);

@@ -57,7 +57,8 @@ INFRASTRUCTURE SETUP (completed)
     - submissions   timestamp | name | email | series_id | pick_team | pick_games
     - series        series_id | round | team1_abbr | team2_abbr | team1_name |
                     team2_name | winner_abbr | actual_games | first_game_utc |
-                    locked | status | team1_logo | team2_logo
+                    locked | status | team1_logo | team2_logo | conference
+    - pins          email | pin_hash | created_at
 
 
 --------------------------------------------------------------------------------
@@ -124,6 +125,17 @@ CHANGE LOG
               - GitHub Pages live, Apps Script deployed, GitHub Actions running
               - Google Sheet populated with 8 first-round series (bracket not
                 fully confirmed yet — logos and game times pending NHL schedule)
+
+  2026-04-16  PIN protection + East/West bracket redesign
+              - PIN field added to picks form (set on first submit, required to update)
+              - PINs stored as SHA-256 hashes in new `pins` sheet (never plaintext)
+              - check_email GAS action returns whether email already has a PIN
+              - conference column added to series sheet (position 14)
+              - update-scores.js now extracts conference from NHL API (letter fallback)
+              - bracket.html redesigned: East left, West right, SCF in center
+              - Fallback flat layout used until conference data is populated
+              - GAS Setup.gs updated with addConferenceHeader() and addPinsSheet()
+                migration helpers (must be run once in Apps Script editor)
 
   2026-04-15  Visual redesign + logo bug fix
               - Added team1_logo / team2_logo columns to series sheet

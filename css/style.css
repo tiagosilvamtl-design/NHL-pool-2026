@@ -340,6 +340,20 @@ a:hover { text-decoration: underline; }
   border-left: 3px solid var(--accent);
 }
 
+/* ─── PIN FIELD ────────────────────────────────────────────────────────────── */
+.pin-field {
+  max-width: 260px;
+  margin-top: 0.25rem;
+  margin-bottom: 1rem;
+}
+
+.pin-field input {
+  letter-spacing: 0.3em;
+  font-size: 1.1rem;
+  text-align: center;
+  font-weight: 700;
+}
+
 /* ─── SERIES GRID ──────────────────────────────────────────────────────────── */
 .series-grid {
   display: grid;
@@ -590,6 +604,85 @@ a:hover { text-decoration: underline; }
 .submit-btn:disabled { opacity: 0.45; cursor: not-allowed; transform: none; box-shadow: none; }
 
 /* ─── BRACKET ──────────────────────────────────────────────────────────────── */
+
+/* Conference layout container */
+.bracket-container {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  overflow-x: auto;
+  padding-bottom: 1rem;
+  min-width: max-content;
+}
+
+/* Each conference half: header + inner row of columns */
+.conference-half {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.conference-half-inner {
+  display: flex;
+  flex-direction: row;
+  gap: 0.75rem;
+  align-items: flex-start;
+}
+
+.conference-header {
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  text-align: center;
+  padding: 0.45rem 0.75rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--surface2);
+  white-space: nowrap;
+  color: var(--text-muted);
+}
+
+.east-header  { border-color: #1d4ed8; color: #93c5fd; background: rgba(29,78,216,0.1); }
+.west-header  { border-color: #b45309; color: #fcd34d; background: rgba(180,83,9,0.1); }
+
+/* Individual round column */
+.bracket-column {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-width: 165px;
+}
+
+/* Stanley Cup Final — center column */
+.bracket-column.final {
+  min-width: 175px;
+  border-left: 2px solid var(--gold);
+  border-right: 2px solid var(--gold);
+  padding: 0 0.625rem;
+  align-self: center;
+}
+
+.bracket-column.final .round-title {
+  color: var(--gold);
+  border-bottom-color: var(--gold);
+}
+
+/* Round column title */
+.round-title {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-dim);
+  text-align: center;
+  padding-bottom: 0.5rem;
+  border-bottom: 2px solid var(--accent);
+  margin-bottom: 0.15rem;
+  white-space: nowrap;
+}
+
+/* Fallback flat bracket (used when no conference data) */
 .bracket {
   display: flex;
   gap: 1.25rem;
@@ -605,18 +698,7 @@ a:hover { text-decoration: underline; }
   gap: 0.75rem;
 }
 
-.round-title {
-  font-size: 0.72rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--text-dim);
-  text-align: center;
-  padding-bottom: 0.6rem;
-  border-bottom: 2px solid var(--accent);
-  margin-bottom: 0.25rem;
-}
-
+/* Series card */
 .bracket-series {
   background: var(--surface2);
   border: 1px solid var(--border);
@@ -625,9 +707,7 @@ a:hover { text-decoration: underline; }
   transition: border-color 0.15s;
 }
 
-.bracket-series.complete {
-  border-color: var(--success);
-}
+.bracket-series.complete { border-color: var(--success); }
 
 .bracket-team {
   display: flex;
@@ -638,12 +718,8 @@ a:hover { text-decoration: underline; }
   font-weight: 600;
 }
 
-.bracket-team.winner { color: var(--success-text); }
-
-.bracket-team.eliminated {
-  color: var(--text-dim);
-  text-decoration: line-through;
-}
+.bracket-team.winner     { color: var(--success-text); }
+.bracket-team.eliminated { color: var(--text-dim); text-decoration: line-through; }
 
 .team-logo-sm {
   width: 28px;
@@ -666,9 +742,10 @@ a:hover { text-decoration: underline; }
   font-weight: 500;
 }
 
-.bracket-status.complete-status {
-  color: var(--success-text);
-}
+.bracket-status.complete-status { color: var(--success-text); }
+
+/* Wider page for bracket to accommodate 7 columns */
+.bracket-page .page-main { max-width: 1400px; }
 
 /* ─── FOOTER ───────────────────────────────────────────────────────────────── */
 .site-footer {

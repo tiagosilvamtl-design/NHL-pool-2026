@@ -1,28 +1,27 @@
 // ─── CONFIGURATION ────────────────────────────────────────────────────────────
-// Replace with your Google Spreadsheet ID (from the URL of your Sheet)
 const SPREADSHEET_ID = '1KBhVCvtmN2LQAeTcbQhqCE5x1uZDIExgqeeAJIlq5ZA';
-
-// Must match the APPS_SCRIPT_SECRET GitHub Secret
-const APPS_SCRIPT_SECRET = 'YOUR_SECRET_HERE';
+const APPS_SCRIPT_SECRET = 'Alakazam';
 
 // Sheet column indices (0-based)
 const SUB_COLS = { timestamp: 0, name: 1, email: 2, series_id: 3, pick_team: 4, pick_games: 5 };
 const SER_COLS = {
   series_id: 0, round: 1, team1_abbr: 2, team2_abbr: 3, team1_name: 4, team2_name: 5,
   winner_abbr: 6, actual_games: 7, first_game_utc: 8, locked: 9, status: 10,
-  team1_logo: 11, team2_logo: 12,
+  team1_logo: 11, team2_logo: 12, conference: 13,
 };
+const PIN_COLS = { email: 0, pin_hash: 1, created_at: 2 };
 
 // ─── ROUTER ───────────────────────────────────────────────────────────────────
 
 function doGet(e) {
   const action = e.parameter.action;
   try {
-    if (action === 'get_bracket')           return jsonResponse(getBracket());
-    if (action === 'get_leaderboard')       return jsonResponse(getLeaderboard());
-    if (action === 'get_my_picks')          return jsonResponse(getMyPicks(e.parameter.email));
+    if (action === 'get_bracket')            return jsonResponse(getBracket());
+    if (action === 'get_leaderboard')        return jsonResponse(getLeaderboard());
+    if (action === 'get_my_picks')           return jsonResponse(getMyPicks(e.parameter.email));
     if (action === 'get_series_lock_status') return jsonResponse(getSeriesLockStatus());
-    if (action === 'submit_picks')          return jsonResponse(submitPicks(e.parameter.data));
+    if (action === 'submit_picks')           return jsonResponse(submitPicks(e.parameter.data));
+    if (action === 'check_email')            return jsonResponse(checkEmail(e.parameter.email));
     return jsonResponse({ error: 'Unknown action' });
   } catch (err) {
     return jsonResponse({ error: err.message });
@@ -55,7 +54,6 @@ function normalizeEmail(email) {
   return (email || '').trim().toLowerCase();
 }
 
-// Returns all data rows (skips header row). Returns array of arrays.
 function getSheetRows(sheetName) {
   const sheet = getSheet(sheetName);
   const lastRow = sheet.getLastRow();
@@ -78,7 +76,53 @@ function rowToSeries(row) {
     status:         row[SER_COLS.status]          || 'active',
     team1_logo:     row[SER_COLS.team1_logo]      || '',
     team2_logo:     row[SER_COLS.team2_logo]      || '',
+    conference:     row[SER_COLS.conference]      || '',
   };
+}
+
+// ─── PIN HELPERS ──────────────────────────────────────────────────────────────
+
+// SHA-256 hash of "normalizedEmail:pin". Applies (b & 0xff) to handle GAS signed bytes.
+function hashPin(email, pin) {
+  const bytes = Utilities.computeDigest(
+    Utilities.DigestAlgorithm.SHA_256,
+    normalizeEmail(email) + ':' + pin
+  );
+  return bytes.map(b => ('0' + (b & 0xff).toString(16)).slice(-2)).join('');
+}
+
+// Called inside the lock to prevent race conditions on first submission.
+// Returns {status: 'valid'|'created'|'invalid'}
+function validateOrCreatePin(email, pin) {
+  const norm = normalizeEmail(email);
+  const hash = hashPin(norm, pin);
+  const pinsSheet = getSheet('pins');
+  const lastRow = pinsSheet.getLastRow();
+
+  if (lastRow >= 2) {
+    const rows = pinsSheet.getRange(2, 1, lastRow - 1, 2).getValues();
+    for (const row of rows) {
+      if (normalizeEmail(row[PIN_COLS.email]) === norm) {
+        return row[PIN_COLS.pin_hash] === hash ? { status: 'valid' } : { status: 'invalid' };
+      }
+    }
+  }
+
+  // First time: create entry
+  pinsSheet.appendRow([norm, hash, new Date().toISOString()]);
+  return { status: 'created' };
+}
+
+// Returns {exists: bool} — only reads column 1 (emails) for efficiency.
+function checkEmail(email) {
+  if (!email) return { error: 'email required' };
+  const norm = normalizeEmail(email);
+  const pinsSheet = getSheet('pins');
+  const lastRow = pinsSheet.getLastRow();
+  if (lastRow < 2) return { exists: false };
+  const rows = pinsSheet.getRange(2, 1, lastRow - 1, 1).getValues();
+  const exists = rows.some(r => normalizeEmail(r[0]) === norm);
+  return { exists };
 }
 
 // ─── GET BRACKET ──────────────────────────────────────────────────────────────
@@ -86,11 +130,8 @@ function rowToSeries(row) {
 function getBracket() {
   const rows = getSheetRows('series');
   const seriesList = rows.map(rowToSeries).filter(s => s.series_id);
-
-  // Derive current round: lowest round with any non-complete series
   const activeRounds = seriesList.filter(s => s.status !== 'complete').map(s => Number(s.round));
   const currentRound = activeRounds.length > 0 ? Math.min(...activeRounds) : null;
-
   return { series: seriesList, currentRound };
 }
 
@@ -135,20 +176,25 @@ function submitPicks(dataParam) {
     return { error: 'Invalid JSON in data parameter' };
   }
 
-  const { name, email, picks } = payload;
-  if (!name || !email || !picks || !picks.length) {
-    return { error: 'Missing required fields: name, email, picks' };
+  const { name, email, picks, pin } = payload;
+  if (!name || !email || !picks || !picks.length || !pin) {
+    return { error: 'Missing required fields: name, email, picks, pin' };
   }
 
   const norm = normalizeEmail(email);
   const cleanName = String(name).trim().substring(0, 100);
 
-  // Use LockService to prevent concurrent writes
   const lock = LockService.getScriptLock();
   lock.waitLock(10000);
 
   try {
-    // Load series map: series_id → {locked, status}
+    // Validate or create PIN (must be inside lock to prevent race on first submission)
+    const pinResult = validateOrCreatePin(norm, pin);
+    if (pinResult.status === 'invalid') {
+      return { error: 'incorrect_pin' };
+    }
+
+    // Load series map
     const seriesRows = getSheetRows('series');
     const seriesMap = {};
     seriesRows.forEach(r => {
@@ -160,13 +206,13 @@ function submitPicks(dataParam) {
       }
     });
 
-    // Load existing submissions for this email: series_id → row index (1-based in sheet, so +2 for header)
+    // Load existing submissions for this email
     const subSheet = getSheet('submissions');
     const subRows = getSheetRows('submissions');
     const existingBySeriesId = {};
     subRows.forEach((r, i) => {
       if (normalizeEmail(r[SUB_COLS.email]) === norm) {
-        existingBySeriesId[r[SUB_COLS.series_id]] = i + 2; // +2: 1-based + skip header
+        existingBySeriesId[r[SUB_COLS.series_id]] = i + 2;
       }
     });
 
@@ -196,11 +242,9 @@ function submitPicks(dataParam) {
       const existingRowIndex = existingBySeriesId[series_id];
 
       if (existingRowIndex) {
-        // Update existing row in place
         subSheet.getRange(existingRowIndex, 1, 1, rowValues.length).setValues([rowValues]);
         results.push({ series_id, status: 'updated' });
       } else {
-        // Append new row
         subSheet.appendRow(rowValues);
         results.push({ series_id, status: 'saved' });
       }
@@ -218,7 +262,6 @@ function getLeaderboard() {
   const seriesRows = getSheetRows('series');
   const subRows = getSheetRows('submissions');
 
-  // Build completed series map: series_id → {winner_abbr, actual_games, round}
   const completedSeries = {};
   seriesRows.forEach(r => {
     if (r[SER_COLS.status] === 'complete' && r[SER_COLS.series_id]) {
@@ -230,15 +273,11 @@ function getLeaderboard() {
     }
   });
 
-  // Group submissions by email
   const participantMap = {};
   subRows.forEach(r => {
     const email = normalizeEmail(r[SUB_COLS.email]);
     if (!email) return;
-    if (!participantMap[email]) {
-      participantMap[email] = { name: r[SUB_COLS.name], picks: {} };
-    }
-    // Always use the most recent name
+    if (!participantMap[email]) participantMap[email] = { name: r[SUB_COLS.name], picks: {} };
     participantMap[email].name = r[SUB_COLS.name];
     participantMap[email].picks[r[SUB_COLS.series_id]] = {
       pick_team:  r[SUB_COLS.pick_team],
@@ -246,7 +285,6 @@ function getLeaderboard() {
     };
   });
 
-  // Score each participant
   const leaderboard = Object.entries(participantMap).map(([email, { name, picks }]) => {
     const roundScores = {};
     const picksDetail = [];
@@ -255,42 +293,26 @@ function getLeaderboard() {
     Object.entries(completedSeries).forEach(([series_id, { winner_abbr, actual_games, round }]) => {
       const pick = picks[series_id];
       if (!roundScores[round]) roundScores[round] = 0;
-
-      let pts = 0;
-      let correctWinner = false;
-      let correctGames = false;
+      let pts = 0, correctWinner = false, correctGames = false;
 
       if (pick) {
         if (pick.pick_team === winner_abbr) {
-          pts += 2;
-          correctWinner = true;
-          if (pick.pick_games === actual_games) {
-            pts += 1;
-            correctGames = true;
-          }
+          pts += 2; correctWinner = true;
+          if (pick.pick_games === actual_games) { pts += 1; correctGames = true; }
         }
       }
 
       roundScores[round] += pts;
       total += pts;
-
-      picksDetail.push({
-        series_id,
-        round,
-        pick_team:      pick ? pick.pick_team  : null,
-        pick_games:     pick ? pick.pick_games : null,
-        correct_winner: correctWinner,
-        correct_games:  correctGames,
-        points:         pts,
-      });
+      picksDetail.push({ series_id, round, pick_team: pick?.pick_team || null,
+        pick_games: pick?.pick_games || null, correct_winner: correctWinner,
+        correct_games: correctGames, points: pts });
     });
 
     return { name, total, roundScores, picksDetail };
   });
 
   leaderboard.sort((a, b) => b.total - a.total);
-
-  // Add rank (ties get same rank)
   let rank = 1;
   leaderboard.forEach((p, i) => {
     if (i > 0 && p.total < leaderboard[i - 1].total) rank = i + 1;
@@ -303,9 +325,7 @@ function getLeaderboard() {
 // ─── UPDATE RESULTS (called by GitHub Actions) ────────────────────────────────
 
 function updateResults(body) {
-  if (body.secret !== APPS_SCRIPT_SECRET) {
-    return { error: 'Unauthorized' };
-  }
+  if (body.secret !== APPS_SCRIPT_SECRET) return { error: 'Unauthorized' };
 
   const { results } = body;
   if (!results || !results.length) return { error: 'No results provided' };
@@ -316,15 +336,12 @@ function updateResults(body) {
   try {
     const seriesSheet = getSheet('series');
     const rows = getSheetRows('series');
-
-    // Build map: series_id → row index in sheet (1-based + header offset)
     const rowIndexMap = {};
     rows.forEach((r, i) => {
       if (r[SER_COLS.series_id]) rowIndexMap[r[SER_COLS.series_id]] = i + 2;
     });
 
-    const updated = [];
-    const appended = [];
+    const updated = [], appended = [];
 
     results.forEach(res => {
       const {
@@ -337,7 +354,7 @@ function updateResults(body) {
         team1_name || '', team2_name || '',
         winner_abbr || '', actual_games || '', first_game_utc || '',
         locked === true, status || 'active',
-        res.team1_logo || '', res.team2_logo || '',
+        res.team1_logo || '', res.team2_logo || '', res.conference || '',
       ];
 
       const existingIdx = rowIndexMap[series_id];
