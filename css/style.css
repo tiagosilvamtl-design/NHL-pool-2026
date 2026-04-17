@@ -626,7 +626,7 @@ a:hover { text-decoration: underline; }
   display: flex;
   flex-direction: row;
   gap: 0.75rem;
-  align-items: flex-start;
+  align-items: stretch;
 }
 
 .conference-header {
@@ -650,8 +650,18 @@ a:hover { text-decoration: underline; }
 .bracket-column {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
   min-width: 165px;
+}
+
+/* Cards wrapper — distributes series cards evenly so later rounds
+   auto-center vertically between their feeding matchups */
+.bracket-cards {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-around;
+  gap: 0.5rem;
+  padding: 0.25rem 0;
 }
 
 /* Stanley Cup Final — center column */
@@ -743,6 +753,19 @@ a:hover { text-decoration: underline; }
 }
 
 .bracket-status.complete-status { color: var(--success-text); }
+
+/* Placeholder card for undecided future-round matchups */
+.bracket-series.placeholder {
+  border-style: dashed;
+  opacity: 0.4;
+}
+
+.tbd-label {
+  font-size: 0.75rem;
+  color: var(--text-dim);
+  font-style: italic;
+  letter-spacing: 0.04em;
+}
 
 /* Wider page for bracket to accommodate 7 columns */
 .bracket-page .page-main { max-width: 1400px; }

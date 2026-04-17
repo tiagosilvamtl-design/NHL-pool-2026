@@ -48,6 +48,9 @@ function groupByRound(seriesList) {
 
 // ─── CONFERENCE BRACKET ───────────────────────────────────────────────────────
 
+// Expected series count per round within a conference
+const ROUND_SERIES_COUNT = { 1: 4, 2: 2, 3: 1 };
+
 function renderConferenceBracket(container, east, west, scf) {
   const roundLabels = { 1: 'First Round', 2: 'Second Round', 3: 'Conf. Finals' };
 
@@ -67,7 +70,11 @@ function renderConferenceBracket(container, east, west, scf) {
   eastInner.className = 'conference-half-inner';
   const eastRounds = groupByRound(east);
   [1, 2, 3].forEach(r => {
-    if (eastRounds[r]) eastInner.appendChild(buildRoundColumn(eastRounds[r], roundLabels[r] || `Round ${r}`));
+    eastInner.appendChild(buildRoundColumn(
+      eastRounds[r] || [],
+      roundLabels[r] || `Round ${r}`,
+      ROUND_SERIES_COUNT[r]
+    ));
   });
   eastHalf.appendChild(eastInner);
 
@@ -78,13 +85,14 @@ function renderConferenceBracket(container, east, west, scf) {
   scfTitle.className = 'round-title';
   scfTitle.textContent = '🏆 Stanley Cup Final';
   scfCol.appendChild(scfTitle);
-  (scf || []).forEach(s => scfCol.appendChild(buildBracketSeries(s)));
-  if (!scf || scf.length === 0) {
-    const placeholder = document.createElement('div');
-    placeholder.className = 'bracket-series';
-    placeholder.innerHTML = '<div class="bracket-status">TBD</div>';
-    scfCol.appendChild(placeholder);
+  const scfCards = document.createElement('div');
+  scfCards.className = 'bracket-cards';
+  if (scf && scf.length > 0) {
+    scf.forEach(s => scfCards.appendChild(buildBracketSeries(s)));
+  } else {
+    scfCards.appendChild(buildPlaceholderCard());
   }
+  scfCol.appendChild(scfCards);
 
   // ── West half (CF → R2 → R1, center to right) ──
   const westHalf = document.createElement('div');
@@ -99,7 +107,11 @@ function renderConferenceBracket(container, east, west, scf) {
   westInner.className = 'conference-half-inner';
   const westRounds = groupByRound(west);
   [3, 2, 1].forEach(r => {
-    if (westRounds[r]) westInner.appendChild(buildRoundColumn(westRounds[r], roundLabels[r] || `Round ${r}`));
+    westInner.appendChild(buildRoundColumn(
+      westRounds[r] || [],
+      roundLabels[r] || `Round ${r}`,
+      ROUND_SERIES_COUNT[r]
+    ));
   });
   westHalf.appendChild(westInner);
 
@@ -111,15 +123,36 @@ function renderConferenceBracket(container, east, west, scf) {
   container.appendChild(bracketEl);
 }
 
-function buildRoundColumn(seriesList, label) {
+function buildRoundColumn(seriesList, label, expectedCount) {
   const col = document.createElement('div');
   col.className = 'bracket-column';
+
   const title = document.createElement('div');
   title.className = 'round-title';
   title.textContent = label;
   col.appendChild(title);
-  seriesList.forEach(s => col.appendChild(buildBracketSeries(s)));
+
+  const cards = document.createElement('div');
+  cards.className = 'bracket-cards';
+  seriesList.forEach(s => cards.appendChild(buildBracketSeries(s)));
+  const remaining = (expectedCount || 0) - seriesList.length;
+  for (let i = 0; i < remaining; i++) {
+    cards.appendChild(buildPlaceholderCard());
+  }
+  col.appendChild(cards);
+
   return col;
+}
+
+function buildPlaceholderCard() {
+  const card = document.createElement('div');
+  card.className = 'bracket-series placeholder';
+  card.innerHTML = `
+    <div class="bracket-team"><span class="tbd-label">TBD</span></div>
+    <div class="bracket-divider"></div>
+    <div class="bracket-team"><span class="tbd-label">TBD</span></div>
+  `;
+  return card;
 }
 
 // ─── SERIES CARD ──────────────────────────────────────────────────────────────
