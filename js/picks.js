@@ -87,7 +87,11 @@ function renderPicksForm(seriesList) {
     const email = emailInput.value.trim();
     if (!pin || !/^\d{4,6}$/.test(pin) || !email) return;
     try {
-      const { picks } = await getMyPicks(email, pin);
+      const { picks, name } = await getMyPicks(email, pin);
+      if (name) {
+        const nameInput = form.querySelector('#input-name');
+        if (nameInput && !nameInput.value.trim()) nameInput.value = name;
+      }
       if (picks && picks.length > 0) {
         prefillPicks(picks);
         showBanner('Your previous picks have been loaded. You can update them until each series locks.', 'info');
