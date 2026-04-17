@@ -58,7 +58,7 @@ function renderPicksForm(seriesList) {
       <input type="password" id="input-pin" placeholder="4–6 digit PIN"
              maxlength="6" inputmode="numeric" autocomplete="off" />
     </div>
-    <p class="picks-instruction">Make your picks for each series below. Picks lock when the first game of each series starts.</p>
+    <p class="picks-instruction">Make your picks for each series below. Picks lock when the first game starts — you can update them any time before then by re-submitting with the same email and PIN.</p>
   `;
 
   // Email blur → show PIN field
@@ -294,6 +294,7 @@ function showBanner(message, type = 'info') {
   banner.textContent = message;
   banner.className = `status-banner ${type}`;
   banner.style.display = 'block';
+  banner.scrollIntoView({ behavior: 'smooth', block: 'center' });
   if (type === 'success' || type === 'info') {
     setTimeout(() => { banner.style.display = 'none'; }, 6000);
   }
