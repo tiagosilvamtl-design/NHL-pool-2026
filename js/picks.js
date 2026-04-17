@@ -169,6 +169,17 @@ function buildSeriesCard(s) {
     </div>
   `;
 
+  // Easter eggs — fire when a team card is selected
+  if (!locked) {
+    card.querySelectorAll('input[type="radio"][name^="winner-"]').forEach(input => {
+      input.addEventListener('change', () => {
+        if (!input.checked) return;
+        if (input.value === 'COL') triggerQuip('🚀', 'Caufield is the ethical Rocket');
+        if (input.value === 'BOS') triggerQuip('🏒', 'Hit him with the stick!');
+      });
+    });
+  }
+
   return card;
 }
 

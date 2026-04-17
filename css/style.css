@@ -779,6 +779,43 @@ a:hover { text-decoration: underline; }
   border-top: 1px solid var(--border);
 }
 
+/* ─── QUIP OVERLAY ─────────────────────────────────────────────────────────── */
+.quip-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9998;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.quip-box {
+  background: var(--surface);
+  border: 2px solid var(--accent);
+  border-radius: var(--radius);
+  padding: 1.5rem 2.5rem;
+  text-align: center;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.6);
+  pointer-events: auto;
+  cursor: pointer;
+  animation: quip-pop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.quip-emoji { font-size: 2.5rem; margin-bottom: 0.5rem; }
+
+.quip-text {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1.4;
+}
+
+@keyframes quip-pop {
+  from { transform: scale(0.5); opacity: 0; }
+  to   { transform: scale(1);   opacity: 1; }
+}
+
 /* ─── SHAME OVERLAY ────────────────────────────────────────────────────────── */
 #shame-overlay {
   position: fixed;

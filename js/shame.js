@@ -63,6 +63,35 @@ function triggerShame() {
   document.body.appendChild(overlay);
 }
 
+// ─── QUIP OVERLAY ────────────────────────────────────────────────────────────
+// Lightweight popup triggered on team selection (not submit).
+
+function triggerQuip(emoji, message) {
+  // Only one quip at a time
+  document.querySelectorAll('.quip-overlay').forEach(el => el.remove());
+
+  const overlay = document.createElement('div');
+  overlay.className = 'quip-overlay';
+  overlay.setAttribute('aria-hidden', 'true');
+  overlay.innerHTML = `
+    <div class="quip-box">
+      <div class="quip-emoji">${emoji}</div>
+      <div class="quip-text">${message}</div>
+    </div>
+  `;
+
+  const dismiss = () => {
+    overlay.classList.add('shame-fade-out');
+    setTimeout(() => overlay.remove(), 600);
+  };
+
+  overlay.addEventListener('click', dismiss);
+  setTimeout(dismiss, 3000);
+
+  document.body.appendChild(overlay);
+}
+
+// ─── SHAME TRIGGER CHECK ──────────────────────────────────────────────────────
 // Check if any of the submitted (non-locked) picks are against MTL
 function checkForShame(seriesList, submittedResults) {
   for (const result of submittedResults) {
