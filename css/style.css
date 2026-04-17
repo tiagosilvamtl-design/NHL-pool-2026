@@ -770,6 +770,95 @@ a:hover { text-decoration: underline; }
 /* Wider page for bracket to accommodate 7 columns */
 .bracket-page .page-main { max-width: 1400px; }
 
+/* ─── MOBILE & RESPONSIVE ───────────────────────────────────────────────────── */
+
+/* General: tighten spacing on small screens */
+@media (max-width: 640px) {
+  .page-main    { padding: 0.875rem 0.75rem; }
+  .page-section { padding: 1.125rem 1rem; }
+
+  .site-title { font-size: 0.875rem; }
+  .site-nav a { padding: 0.35rem 0.55rem; font-size: 0.78rem; }
+
+  /* Leaderboard table: allow horizontal scroll instead of overflow */
+  #leaderboard-container { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .leaderboard-table     { min-width: 360px; }
+
+  /* One-column picks grid on small phones */
+  .series-grid { grid-template-columns: 1fr; }
+
+  /* Slightly smaller team logo cards */
+  .team-logo-wrap                   { width: 56px; height: 56px; }
+  .team-logo, .team-logo-fallback   { width: 56px; height: 56px; }
+  .team-option                      { min-height: 110px; }
+}
+
+/* Hide the long site title on very small phones to free nav space */
+@media (max-width: 400px) {
+  .site-title { display: none; }
+}
+
+/* ── Bracket: vertical layout on tablet / mobile ── */
+@media (max-width: 900px) {
+  /* Let the page use full width (desktop override was 1400px) */
+  .bracket-page .page-main {
+    max-width: 100%;
+    padding: 1rem 0.75rem;
+  }
+
+  /* Stack East → SCF → West vertically */
+  .bracket-container {
+    flex-direction: column;
+    gap: 1.25rem;
+    overflow-x: hidden;
+    min-width: unset;
+    align-items: stretch;
+  }
+
+  .conference-half { width: 100%; }
+
+  /* Stack round columns vertically within each conference */
+  .conference-half-inner {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+  }
+
+  /* West renders [CF, R2, R1] in HTML; reverse so R1 appears at top
+     giving the same top→bottom reading order as the East side */
+  .conference-half:last-of-type .conference-half-inner {
+    flex-direction: column-reverse;
+  }
+
+  /* Round columns go full width; cards flow into a wrapping row */
+  .bracket-column { min-width: unset; width: 100%; }
+
+  .bracket-cards {
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.5rem;
+  }
+
+  /* Cards: 2-per-row so R1's 4 cards form a 2×2 grid */
+  .bracket-series {
+    flex: 1 1 145px;
+    min-width: 145px;
+    max-width: calc(50% - 0.25rem);
+  }
+
+  /* SCF: swap vertical gold borders for horizontal ones */
+  .bracket-column.final {
+    min-width: unset;
+    border-left: none;
+    border-right: none;
+    border-top: 2px solid var(--gold);
+    border-bottom: 2px solid var(--gold);
+    padding: 0.625rem 0;
+    align-self: auto;
+  }
+}
+
 /* ─── FOOTER ───────────────────────────────────────────────────────────────── */
 .site-footer {
   text-align: center;
