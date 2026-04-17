@@ -61,20 +61,12 @@ function renderPicksForm(seriesList) {
     <p class="picks-instruction">Make your picks for each series below. Picks lock when the first game of each series starts.</p>
   `;
 
-  // Email blur → pre-fill picks + show PIN field
+  // Email blur → show PIN field
   const emailInput = form.querySelector('#input-email');
+  const pinInput   = form.querySelector('#input-pin');
   emailInput.addEventListener('blur', async () => {
     const email = emailInput.value.trim();
     if (!email || !email.includes('@')) return;
-
-    // Pre-fill existing picks (non-fatal)
-    try {
-      const { picks } = await getMyPicks(email);
-      if (picks && picks.length > 0) {
-        prefillPicks(picks);
-        showBanner('Your previous picks have been loaded. You can update them until each series locks.', 'info');
-      }
-    } catch (_) {}
 
     // Show PIN field with correct label
     try {
@@ -84,7 +76,21 @@ function renderPicksForm(seriesList) {
       if (pinGroup) {
         pinLabel.textContent = exists ? 'Enter your PIN' : 'Choose a PIN (4–6 digits)';
         pinGroup.style.display = '';
-        document.getElementById('input-pin')?.focus();
+        pinInput?.focus();
+      }
+    } catch (_) {}
+  });
+
+  // PIN blur → pre-fill picks once PIN is entered
+  pinInput.addEventListener('blur', async () => {
+    const pin   = pinInput.value.trim();
+    const email = emailInput.value.trim();
+    if (!pin || !/^\d{4,6}$/.test(pin) || !email) return;
+    try {
+      const { picks } = await getMyPicks(email, pin);
+      if (picks && picks.length > 0) {
+        prefillPicks(picks);
+        showBanner('Your previous picks have been loaded. You can update them until each series locks.', 'info');
       }
     } catch (_) {}
   });

@@ -17,8 +17,8 @@ async function getLeaderboard() {
   return apiGet('get_leaderboard');
 }
 
-async function getMyPicks(email) {
-  return apiGet('get_my_picks', { email: email.trim().toLowerCase() });
+async function getMyPicks(email, pin) {
+  return apiGet('get_my_picks', { email: email.trim().toLowerCase(), pin: pin || '' });
 }
 
 async function getSeriesLockStatus() {
