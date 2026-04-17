@@ -61,8 +61,8 @@ async function fetchBracket() {
       if (!letter) continue;
 
       const series_id = `R${roundNum}${letter}`;
-      const top = s.topSeedTeam || {};
-      const bot = s.bottomSeedTeam || {};
+      const top = s.topSeed || {};
+      const bot = s.bottomSeed || {};
 
       const topWins = Number(top.wins || 0);
       const botWins = Number(bot.wins || 0);
@@ -96,8 +96,8 @@ async function fetchBracket() {
         round: roundNum,
         team1_abbr:  top.abbrev      || '',
         team2_abbr:  bot.abbrev      || '',
-        team1_name:  top.commonName  || top.name || '',
-        team2_name:  bot.commonName  || bot.name || '',
+        team1_name: (typeof top.commonName === 'object' ? top.commonName?.default : top.commonName) || top.name || '',
+        team2_name: (typeof bot.commonName === 'object' ? bot.commonName?.default : bot.commonName) || bot.name || '',
         team1_logo:  top.logo        || '',
         team2_logo:  bot.logo        || '',
         winner_abbr,
@@ -109,6 +109,13 @@ async function fetchBracket() {
         locked: false,
       };
     }
+  }
+
+  if (Object.keys(seriesMap).length > 0) {
+    const firstSeries = (data.rounds[0].series || [])[0];
+    console.log('Sample series fields:', JSON.stringify(Object.keys(firstSeries || {})));
+    const sample = firstSeries?.topSeed || {};
+    console.log('Sample topSeed fields:', JSON.stringify(Object.keys(sample)));
   }
 
   console.log(`Found ${Object.keys(seriesMap).length} series.`);
