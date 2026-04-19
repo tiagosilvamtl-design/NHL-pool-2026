@@ -104,6 +104,8 @@ async function fetchBracket() {
         actual_games,
         status,
         conference,
+        team1_wins:  topWins,
+        team2_wins:  botWins,
         // first_game_utc and locked filled in next step
         first_game_utc: null,
         locked: false,

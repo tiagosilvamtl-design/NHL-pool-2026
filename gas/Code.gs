@@ -7,7 +7,7 @@ const SUB_COLS = { timestamp: 0, name: 1, email: 2, series_id: 3, pick_team: 4, 
 const SER_COLS = {
   series_id: 0, round: 1, team1_abbr: 2, team2_abbr: 3, team1_name: 4, team2_name: 5,
   winner_abbr: 6, actual_games: 7, first_game_utc: 8, locked: 9, status: 10,
-  team1_logo: 11, team2_logo: 12, conference: 13,
+  team1_logo: 11, team2_logo: 12, conference: 13, team1_wins: 14, team2_wins: 15,
 };
 const PIN_COLS = { email: 0, pin_hash: 1, created_at: 2 };
 
@@ -77,6 +77,8 @@ function rowToSeries(row) {
     team1_logo:     row[SER_COLS.team1_logo]      || '',
     team2_logo:     row[SER_COLS.team2_logo]      || '',
     conference:     row[SER_COLS.conference]      || '',
+    team1_wins:     Number(row[SER_COLS.team1_wins]) || 0,
+    team2_wins:     Number(row[SER_COLS.team2_wins]) || 0,
   };
 }
 
@@ -410,6 +412,8 @@ function updateResults(body) {
         winner_abbr || '', actual_games || '', first_game_utc || '',
         locked === true, status || 'active',
         res.team1_logo || '', res.team2_logo || '', res.conference || '',
+        res.team1_wins != null ? Number(res.team1_wins) : '',
+        res.team2_wins != null ? Number(res.team2_wins) : '',
       ];
 
       const existingIdx = rowIndexMap[series_id];

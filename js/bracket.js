@@ -165,29 +165,50 @@ function buildBracketSeries(s) {
   const team2Won = s.winner_abbr === s.team2_abbr;
   const seriesStarted = s.locked || s.status === 'complete';
 
-  const statusLabel = s.status === 'complete'
-    ? `${s.winner_abbr} wins in ${s.actual_games}`
-    : seriesStarted
-      ? 'In progress'
-      : s.first_game_utc
-        ? `Starts ${formatLocalTime(s.first_game_utc)}`
-        : 'Upcoming';
+  const t1w = s.team1_wins ?? 0;
+  const t2w = s.team2_wins ?? 0;
+  const hasLiveScore = seriesStarted && s.status !== 'complete' && (t1w > 0 || t2w > 0);
 
-  const statusClass = s.status === 'complete' ? 'complete-status' : '';
+  let statusLabel, statusClass;
+  if (s.status === 'complete') {
+    statusLabel = `${s.winner_abbr} wins in ${s.actual_games}`;
+    statusClass = 'complete-status';
+  } else if (hasLiveScore) {
+    if (t1w === t2w) {
+      statusLabel = `Tied ${t1w}-${t2w}`;
+    } else {
+      const leader = t1w > t2w ? s.team1_abbr : s.team2_abbr;
+      const score  = t1w > t2w ? `${t1w}-${t2w}` : `${t2w}-${t1w}`;
+      statusLabel = `${leader} leads ${score}`;
+    }
+    statusClass = 'live-status';
+  } else if (seriesStarted) {
+    statusLabel = 'In progress';
+    statusClass = '';
+  } else {
+    statusLabel = s.first_game_utc ? `Starts ${formatLocalTime(s.first_game_utc)}` : 'Upcoming';
+    statusClass = '';
+  }
 
   const teamLogo = (logo, abbr) => logo
     ? `<img src="${logo}" alt="${abbr}" class="team-logo-sm" />`
+    : '';
+
+  const winsHtml = (wins, show) => show
+    ? `<span class="series-wins">${wins}</span>`
     : '';
 
   card.innerHTML = `
     <div class="bracket-team ${team1Won ? 'winner' : team2Won ? 'eliminated' : ''}">
       ${teamLogo(s.team1_logo, s.team1_abbr)}
       <span>${s.team1_abbr}</span>
+      ${winsHtml(t1w, seriesStarted)}
     </div>
     <div class="bracket-divider"></div>
     <div class="bracket-team ${team2Won ? 'winner' : team1Won ? 'eliminated' : ''}">
       ${teamLogo(s.team2_logo, s.team2_abbr)}
       <span>${s.team2_abbr}</span>
+      ${winsHtml(t2w, seriesStarted)}
     </div>
     <div class="bracket-status ${statusClass}">${statusLabel}</div>
   `;

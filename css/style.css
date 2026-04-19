@@ -753,6 +753,16 @@ a:hover { text-decoration: underline; }
 }
 
 .bracket-status.complete-status { color: var(--success-text); }
+.bracket-status.live-status     { color: #93c5fd; font-weight: 600; }
+
+.series-wins {
+  margin-left: auto;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  min-width: 1ch;
+  text-align: right;
+}
 
 /* Placeholder card for undecided future-round matchups */
 .bracket-series.placeholder {
