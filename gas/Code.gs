@@ -18,7 +18,7 @@ function doGet(e) {
   try {
     if (action === 'get_bracket')            return jsonResponse(getBracket());
     if (action === 'get_leaderboard')        return jsonResponse(getLeaderboard());
-    if (action === 'get_my_picks')           return jsonResponse(getMyPicks(e.parameter.email));
+    if (action === 'get_my_picks')           return jsonResponse(getMyPicks(e.parameter.email, e.parameter.pin));
     if (action === 'get_series_lock_status') return jsonResponse(getSeriesLockStatus());
     if (action === 'submit_picks')           return jsonResponse(submitPicks(e.parameter.data));
     if (action === 'check_email')            return jsonResponse(checkEmail(e.parameter.email));
@@ -150,18 +150,32 @@ function getSeriesLockStatus() {
 
 // ─── GET MY PICKS ─────────────────────────────────────────────────────────────
 
-function getMyPicks(email) {
+function getMyPicks(email, pin) {
   if (!email) return { error: 'email required' };
   const norm = normalizeEmail(email);
+
+  // If this email has a registered PIN, require correct PIN before returning picks
+  const pinsSheet = getSheet('pins');
+  const lastRow = pinsSheet.getLastRow();
+  if (lastRow >= 2) {
+    const pinRows = pinsSheet.getRange(2, 1, lastRow - 1, 2).getValues();
+    const pinRow = pinRows.find(r => normalizeEmail(r[PIN_COLS.email]) === norm);
+    if (pinRow) {
+      if (!pin || hashPin(norm, pin) !== pinRow[PIN_COLS.pin_hash]) {
+        return { picks: [] }; // Wrong or missing PIN — return empty silently
+      }
+    }
+  }
+
   const rows = getSheetRows('submissions');
-  const picks = rows
-    .filter(r => normalizeEmail(r[SUB_COLS.email]) === norm)
-    .map(r => ({
-      series_id:  r[SUB_COLS.series_id],
-      pick_team:  r[SUB_COLS.pick_team],
-      pick_games: r[SUB_COLS.pick_games],
-    }));
-  return { picks };
+  const myRows = rows.filter(r => normalizeEmail(r[SUB_COLS.email]) === norm);
+  const picks = myRows.map(r => ({
+    series_id:  r[SUB_COLS.series_id],
+    pick_team:  r[SUB_COLS.pick_team],
+    pick_games: r[SUB_COLS.pick_games],
+  }));
+  const name = myRows.length > 0 ? myRows[0][SUB_COLS.name] : null;
+  return { picks, name };
 }
 
 // ─── SUBMIT PICKS ─────────────────────────────────────────────────────────────
@@ -273,6 +287,16 @@ function getLeaderboard() {
     }
   });
 
+  // Series locked but still in progress — picks are visible, no score yet
+  const lockedActiveSeries = {};
+  seriesRows.forEach(r => {
+    const locked = r[SER_COLS.locked] === true || r[SER_COLS.locked] === 'TRUE';
+    const status = r[SER_COLS.status] || 'active';
+    if (locked && status !== 'complete' && r[SER_COLS.series_id]) {
+      lockedActiveSeries[r[SER_COLS.series_id]] = { round: Number(r[SER_COLS.round]) };
+    }
+  });
+
   const participantMap = {};
   subRows.forEach(r => {
     const email = normalizeEmail(r[SUB_COLS.email]);
@@ -309,6 +333,19 @@ function getLeaderboard() {
         correct_games: correctGames, points: pts });
     });
 
+    // Add locked-but-not-complete series (visible picks, no score yet)
+    Object.entries(lockedActiveSeries).forEach(([series_id, { round }]) => {
+      const pick = picks[series_id];
+      picksDetail.push({
+        series_id, round,
+        pick_team:      pick ? pick.pick_team  : null,
+        pick_games:     pick ? pick.pick_games : null,
+        correct_winner: null,
+        correct_games:  null,
+        points:         null,
+      });
+    });
+
     return { name, total, roundScores, picksDetail };
   });
 
@@ -319,7 +356,25 @@ function getLeaderboard() {
     p.rank = rank;
   });
 
-  return { leaderboard };
+  const seriesInfo = seriesRows
+    .filter(r => {
+      const locked = r[SER_COLS.locked] === true || r[SER_COLS.locked] === 'TRUE';
+      return (locked || r[SER_COLS.status] === 'complete') && r[SER_COLS.series_id];
+    })
+    .map(r => ({
+      series_id:   r[SER_COLS.series_id],
+      round:       Number(r[SER_COLS.round]),
+      team1_abbr:  r[SER_COLS.team1_abbr],
+      team2_abbr:  r[SER_COLS.team2_abbr],
+      team1_name:  r[SER_COLS.team1_name],
+      team2_name:  r[SER_COLS.team2_name],
+      team1_logo:  r[SER_COLS.team1_logo]  || '',
+      team2_logo:  r[SER_COLS.team2_logo]  || '',
+      status:      r[SER_COLS.status]       || 'active',
+      winner_abbr: r[SER_COLS.winner_abbr]  || null,
+    }));
+
+  return { leaderboard, series: seriesInfo };
 }
 
 // ─── UPDATE RESULTS (called by GitHub Actions) ────────────────────────────────
