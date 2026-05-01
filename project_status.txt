@@ -1,6 +1,6 @@
 ================================================================================
  NHL PLAYOFF POOL — PROJECT STATUS
- Last updated: 2026-04-17
+ Last updated: 2026-05-01
 ================================================================================
 
 OVERVIEW
@@ -57,7 +57,8 @@ INFRASTRUCTURE SETUP (completed)
     - submissions   timestamp | name | email | series_id | pick_team | pick_games
     - series        series_id | round | team1_abbr | team2_abbr | team1_name |
                     team2_name | winner_abbr | actual_games | first_game_utc |
-                    locked | status | team1_logo | team2_logo | conference
+                    locked | status | team1_logo | team2_logo | conference |
+                    team1_wins | team2_wins
     - pins          email | pin_hash | created_at
 
 
@@ -66,15 +67,17 @@ FILE STRUCTURE
 --------------------------------------------------------------------------------
 
   index.html                      Leaderboard page
+  overview.html                   Picks overview — participant × series matrix
   picks.html                      Pick submission form
   bracket.html                    Playoff bracket view
   css/style.css                   All styling (includes mobile responsive)
   js/config.js                    Apps Script URL constant
   js/api.js                       Fetch wrappers for backend + NHL API
-  js/leaderboard.js               Leaderboard rendering + auto-refresh
+  js/leaderboard.js               Leaderboard rendering + auto-refresh + modal
+  js/overview.js                  Overview matrix rendering
   js/picks.js                     Picks form logic, lock enforcement, pre-fill
   js/shame.js                     Easter egg animations (shame + quips)
-  js/bracket.js                   Bracket visualization
+  js/bracket.js                   Bracket visualization with live series scores
   gas/Code.gs                     Google Apps Script backend (copy into editor)
   gas/Setup.gs                    One-time sheet setup utility
   .github/scripts/update-scores.js   Node script — fetches NHL API
@@ -195,6 +198,55 @@ CHANGE LOG
                 horizontally, picks grid goes single-column, logos shrink
               - Very small phones (≤400px): site title hidden for nav room
 
+  2026-04-18  Leaderboard: click name to view picks modal
+              - Clicking any participant name on the leaderboard opens a modal
+                showing their picks for every locked/completed series
+              - Picks only visible once locked (no spoiling open picks)
+              - Each pick row shows: matchup, team chosen, games predicted,
+                ✓/✗ result + point count for completed series, "In progress"
+                badge for locked-but-running series
+              - Modal dismisses on outside click or Escape key
+              - getLeaderboard() in Code.gs extended:
+                  · Returns series array with team logos, names, status
+                  · Adds locked-active picks to picksDetail (correct_winner: null)
+              - Requires Code.gs redeploy
+
+  2026-04-18  Overview page (participant × series matrix)
+              - New overview.html page added to nav
+              - Renders a scrollable table: participants (rows) × locked series
+                (columns), grouped by round
+              - Cell colours: green = correct winner, red = wrong, blue tint =
+                in progress, blank = no pick
+              - Series headers show both team logos with winner highlighted
+              - Sticky first column keeps participant names visible on scroll
+              - getLeaderboard() response reused (no new backend endpoint)
+
+  2026-04-19  Overview desktop alignment fixes
+              - Removed negative margin on .ov-table-wrap (sticky column offset)
+              - Added vertical-align: middle to all .ov-table th/td
+              - Fixed .ov-series-header vertical-align (bottom → middle)
+              - Reduced name column padding to push "Participant" label left
+
+  2026-04-19  Live series scores in bracket
+              - update-scores.js now stores team1_wins / team2_wins per series
+                (from topSeed.wins / bottomSeed.wins in NHL carousel API)
+              - Code.gs: SER_COLS extended with team1_wins (col 14) and
+                team2_wins (col 15); rowToSeries and updateResults updated
+              - bracket.js: win count shown next to each team in card;
+                status line shows "MIN leads 1-0" / "Tied 1-1" for
+                in-progress series instead of generic "In progress"
+              - Requires Code.gs redeploy + one Actions run to populate cols
+
+
+--------------------------------------------------------------------------------
+CURRENT STATE (as of 2026-05-01)
+--------------------------------------------------------------------------------
+
+  GitHub Actions:  running every hour, all green
+  Series tracked:  11 (8 × Round 1 complete, 3 × Round 2 detected)
+  Round 2 start:   R2J first game 2026-05-03T00:00Z; R2K/R2L TBD in schedule
+  Data pipeline:   NHL API → update-scores.js → Apps Script → Google Sheet ✓
+
 
 --------------------------------------------------------------------------------
 KNOWN ISSUES / PENDING
@@ -205,5 +257,8 @@ KNOWN ISSUES / PENDING
 
   - Code.gs must be manually redeployed in Apps Script editor after every
     change to gas/Code.gs in the repo. See redeployment notes above.
+    PENDING: last Code.gs change (team1_wins/team2_wins columns) has NOT
+    been redeployed yet — bracket live scores will show "In progress" until
+    the redeploy + one Actions run.
 
 ================================================================================
