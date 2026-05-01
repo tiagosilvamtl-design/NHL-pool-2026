@@ -22,7 +22,8 @@ async function loadPicksForm() {
     // Group confirmed (both teams known), non-complete series by round
     const pickableByRound = {};
     for (const s of series) {
-      if (s.status === 'complete' || !s.team1_abbr || !s.team2_abbr) continue;
+      const confirmed = a => a && a !== 'TBD';
+      if (s.status === 'complete' || !confirmed(s.team1_abbr) || !confirmed(s.team2_abbr)) continue;
       const r = Number(s.round);
       if (!pickableByRound[r]) pickableByRound[r] = [];
       pickableByRound[r].push(s);
@@ -158,6 +159,9 @@ function buildSeriesCard(s) {
     ? `<img src="${logo}" alt="${abbr}" class="team-logo" />`
     : `<span class="team-logo-fallback">${abbr}</span>`;
 
+  const name1 = s.team1_name || s.team1_abbr;
+  const name2 = s.team2_name || s.team2_abbr;
+
   card.innerHTML = `
     <div class="series-header">
       <span class="series-label">${s.series_id}</span>
@@ -167,14 +171,14 @@ function buildSeriesCard(s) {
       <label class="team-option ${locked ? 'disabled' : ''}">
         <input type="radio" name="winner-${s.series_id}" value="${s.team1_abbr}" ${locked ? 'disabled' : ''} required />
         <div class="team-logo-wrap">${teamLogo(s.team1_logo, s.team1_abbr)}</div>
-        <span class="team-name">${s.team1_name}</span>
+        <span class="team-name">${name1}</span>
         <span class="team-abbr-badge">${s.team1_abbr}</span>
       </label>
       <div class="vs-divider">VS</div>
       <label class="team-option ${locked ? 'disabled' : ''}">
         <input type="radio" name="winner-${s.series_id}" value="${s.team2_abbr}" ${locked ? 'disabled' : ''} required />
         <div class="team-logo-wrap">${teamLogo(s.team2_logo, s.team2_abbr)}</div>
-        <span class="team-name">${s.team2_name}</span>
+        <span class="team-name">${name2}</span>
         <span class="team-abbr-badge">${s.team2_abbr}</span>
       </label>
     </div>
