@@ -1,6 +1,9 @@
 // Picks submission form logic
 
-let bracketData = null; // { series, currentRound }
+const ROUND_LABELS = { 1: 'Round 1', 2: 'Round 2', 3: 'Conference Finals', 4: 'Stanley Cup Final' };
+
+let bracketData    = null; // { series, currentRound } — full response from get_bracket
+let pickableSeries = [];   // flat, all confirmed non-complete series across all rounds
 
 async function loadPicksForm() {
   const formContainer = document.getElementById('picks-form-container');
@@ -9,33 +12,40 @@ async function loadPicksForm() {
     formContainer.innerHTML = '<p class="loading">Loading current series...</p>';
     bracketData = await getBracket();
 
-    const { series, currentRound } = bracketData;
+    const { series } = bracketData;
 
     if (!series || series.length === 0) {
       formContainer.innerHTML = '<p class="empty">No active series found. Check back when the playoffs begin!</p>';
       return;
     }
 
-    const currentSeries = series.filter(
-      s => Number(s.round) === currentRound && s.status !== 'complete'
-    );
+    // Group confirmed (both teams known), non-complete series by round
+    const pickableByRound = {};
+    for (const s of series) {
+      if (s.status === 'complete' || !s.team1_abbr || !s.team2_abbr) continue;
+      const r = Number(s.round);
+      if (!pickableByRound[r]) pickableByRound[r] = [];
+      pickableByRound[r].push(s);
+    }
+    const rounds = Object.keys(pickableByRound).map(Number).sort();
+    pickableSeries = rounds.flatMap(r => pickableByRound[r]);
 
-    if (currentSeries.length === 0) {
+    if (rounds.length === 0) {
       const allComplete = series.every(s => s.status === 'complete');
       formContainer.innerHTML = allComplete
         ? '<p class="empty">The playoffs are over. Check the leaderboard for final standings!</p>'
-        : '<p class="empty">No open series for this round right now.</p>';
+        : '<p class="empty">No open series right now. Check back soon!</p>';
       return;
     }
 
-    renderPicksForm(currentSeries);
+    renderPicksForm(pickableByRound, rounds);
   } catch (err) {
     formContainer.innerHTML = `<p class="error">Failed to load series: ${err.message}</p>`;
     console.error(err);
   }
 }
 
-function renderPicksForm(seriesList) {
+function renderPicksForm(seriesByRound, rounds) {
   const formContainer = document.getElementById('picks-form-container');
 
   const form = document.createElement('form');
@@ -99,11 +109,23 @@ function renderPicksForm(seriesList) {
     } catch (_) {}
   });
 
-  // Series cards
-  const seriesGrid = document.createElement('div');
-  seriesGrid.className = 'series-grid';
-  seriesList.forEach(s => seriesGrid.appendChild(buildSeriesCard(s)));
-  form.appendChild(seriesGrid);
+  // Series cards grouped by round
+  for (const r of rounds) {
+    const section = document.createElement('div');
+    section.className = 'round-section';
+
+    const header = document.createElement('h2');
+    header.className = 'round-header';
+    header.textContent = ROUND_LABELS[r] || `Round ${r}`;
+    section.appendChild(header);
+
+    const grid = document.createElement('div');
+    grid.className = 'series-grid';
+    seriesByRound[r].forEach(s => grid.appendChild(buildSeriesCard(s)));
+    section.appendChild(grid);
+
+    form.appendChild(section);
+  }
 
   // Submit button
   const submitBtn = document.createElement('button');
@@ -225,17 +247,13 @@ async function handleSubmit(e) {
     return;
   }
 
-  if (!bracketData) return;
-  const { series, currentRound } = bracketData;
-  const currentSeries = series.filter(
-    s => Number(s.round) === currentRound && s.status !== 'complete'
-  );
+  if (!bracketData || pickableSeries.length === 0) return;
 
   // Collect picks (skip locked series)
   const picks = [];
   let missingPicks = false;
 
-  for (const s of currentSeries) {
+  for (const s of pickableSeries) {
     if (s.locked) continue;
 
     const winnerEl = form.querySelector(`input[name="winner-${s.series_id}"]:checked`);
@@ -262,7 +280,7 @@ async function handleSubmit(e) {
   }
 
   if (picks.length === 0) {
-    showBanner('All series in this round are locked. No picks to submit.', 'info');
+    showBanner('All series are locked. No picks to submit.', 'info');
     return;
   }
 
@@ -286,7 +304,7 @@ async function handleSubmit(e) {
     showBanner(msg.trim() || 'Picks submitted!', saved + updated > 0 ? 'success' : 'warning');
 
     // Check for shame
-    if (checkForShame(currentSeries, results.map((r, i) => ({ ...r, pick_team: picks[i]?.pick_team })))) {
+    if (checkForShame(pickableSeries, results.map((r, i) => ({ ...r, pick_team: picks[i]?.pick_team })))) {
       setTimeout(triggerShame, 600);
     }
   } catch (err) {
